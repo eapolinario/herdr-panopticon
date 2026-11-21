@@ -1,0 +1,25 @@
+WEBVTT
+
+00:00.000 --> 00:03.750
+Panopticon brings live agent terminals from every Herdr space into one grid.
+
+00:03.800 --> 00:06.430
+Atlas has a split: Pi above, a test watcher below. Press Ctrl+Shift+G.
+
+00:06.480 --> 00:10.500
+Four agents from Atlas, Beacon and Relay appear. The ordinary shell stays out of the grid.
+
+00:10.600 --> 00:13.150
+In Beacon, Claude Code asks what an unknown stop should return. Its caption says “Needs you.”
+
+00:13.200 --> 00:17.900
+Type “Return an empty list.” in the tile and press Enter. The agent runs a fallback test; it passes.
+
+00:18.400 --> 00:22.200
+Click Back to main. The Routes tab and its test-watcher split are still in place.
+
+00:22.350 --> 00:27.550
+Reopen the grid and click Beacon’s caption. The original API review pane opens with the reply still there.
+
+00:27.650 --> 00:32.000
+herdr-panopticon · github.com/eapolinario/herdr-panopticon
