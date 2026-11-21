@@ -6,28 +6,19 @@ A global grid of **live agent terminals** for [Herdr Desktop](https://herdr.dev)
 
 https://github.com/user-attachments/assets/f749a976-a4f1-40b1-ab5c-716ec52f17d8
 
-## Try it
+## Install
 
-Tested on Linux with Herdr Desktop **0.1.16** and herdr-core **0.1.21**. No build, package installation, or API key is needed for the mod.
+Tested on Linux with Herdr Desktop **0.1.16** and herdr-core **0.1.21**. The shell installer also targets macOS, but that is not yet tested. Have `herdr-app` and `curl` on your `PATH`; no Git checkout, build, package installation, sudo, or API key is needed. Herdr does not need to be running during installation.
 
-```sh
-git clone --branch v0.1.0 https://github.com/eapolinario/herdr-panopticon.git
-cd herdr-panopticon
-```
-
-Copy `mods/panopticon/` into your Herdr app's `mods/` directory. On Linux or macOS, this example **refuses to overwrite an existing mod**:
+[The installer](install.sh) downloads the released **v0.1.0** mod from GitHub, runs `herdr-app check` in a temporary app home, and installs its two files plus an ownership marker into your app home's `mods/panopticon/`. **It does not edit your keys or existing layouts.**
 
 ```sh
-(
-  set -eu
-  app_home="${HERDR_APP_HOME:-$HOME/.config/herdr-app}"
-  dest="$app_home/mods/panopticon"
-  mkdir -p "$app_home/mods"
-  mkdir "$dest"
-  cp mods/panopticon/main.js mods/panopticon/mod.json "$dest/"
-  herdr-app check "$dest"
-)
+curl -fsSL https://raw.githubusercontent.com/eapolinario/herdr-panopticon/main/install.sh | sh
 ```
+
+The app home defaults to `~/.config/herdr-app`. For a custom home, export `HERDR_APP_HOME` first, or use `| sh -s -- --app-home /path/to/herdr-app` instead of `| sh`.
+
+Run the same command again to update an installer-managed copy. An existing manual install or symlinked mod directory is **left untouched**: back it up or move it aside before installing. To install a different tag or branch, use `| sh -s -- --ref TAG_OR_BRANCH`.
 
 With Herdr running, toggle the grid from any space:
 
@@ -35,7 +26,19 @@ With Herdr running, toggle the grid from any space:
 herdr-app do mod.open --name panopticon
 ```
 
-For **Ctrl+Shift+G**, merge the single binding from [keys.json](keys.json) into your own `keys.json` **only if the chord is free**. Don't replace your keymap. You can pick another key or just use the command and the **Back** button.
+### Optional shortcut
+
+For **Ctrl+Shift+G**, merge this binding into `global` in your app home's `keys.json` **only if the chord is free**:
+
+```json
+{
+  "global": {
+    "ctrl-shift-g": "mod.open:panopticon"
+  }
+}
+```
+
+This is a snippet, **not a replacement keymap**. Pick another key if needed, or just use the command and the **Back** button.
 
 ## Using the grid
 
@@ -48,8 +51,16 @@ For **Ctrl+Shift+G**, merge the single binding from [keys.json](keys.json) into 
 
 On first use the mod creates **`layouts/panopticon.json`** in the Herdr app home. This is a personal runtime layout with local session addresses, not a file to install or share. A pre-existing unrelated layout with that name is left alone. The previous layout name is remembered in Herdr's shared state. The mod uses Herdr's native terminal blocks; it does not read scrollback, invoke shell commands, or make network requests.
 
-To uninstall, switch back, remove the binding you added and remove the installed `mods/panopticon/` folder. You can also remove `layouts/panopticon.json` **if Panopticon generated it** (its root ID is `panopticon-agent-grid`). This doesn't end sessions.
+To uninstall, **switch back first** and remove any binding you added, then run:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/eapolinario/herdr-panopticon/main/install.sh | sh -s -- --uninstall
+```
+
+Use the same app home as for installation (`HERDR_APP_HOME` or `--app-home`). The uninstaller removes only an installer-managed `mods/panopticon/` directory and leaves keys and runtime layouts alone. For an older manual install, remove the mod folder yourself.
+
+You can also remove `layouts/panopticon.json` **if Panopticon generated it** (its root ID is `panopticon-agent-grid`). This doesn't end sessions.
 
 ## Development
 
-Run `bash tests/check.sh`. It checks a clean mod copy and exercises agent selection and grid geometry using Herdr's own checker in a temporary app home. No running Herdr window is needed. [RECIPE.md](RECIPE.md) describes how to reproduce the view.
+Run `bash tests/check.sh`. It checks a clean mod copy and exercises agent selection and grid geometry using Herdr's own checker in a temporary app home. It also tests installation, updates, refusal to overwrite unowned mods, and removal with local download fixtures and a mock checker. No running Herdr window or network access is needed. [RECIPE.md](RECIPE.md) describes the installation footprint and how to reproduce the view.

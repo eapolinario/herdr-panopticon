@@ -4,6 +4,58 @@ Switch the entire Herdr window to an evenly spaced grid of live agent terminals,
 
 ![Panopticon](preview.png)
 
+## Adding it (for the app's agent)
+
+Use the installer; no cloning or build is needed. It requires `curl` and
+`herdr-app` on `PATH`, but no running app, sudo, or additional packages.
+Tested on Linux with Herdr Desktop 0.1.16 and herdr-core 0.1.21. The shell
+script also targets macOS, which is not yet tested; there is no Windows
+installer.
+
+Tell the person first what it does:
+
+- downloads the two standalone mod files from the GitHub **v0.1.0** tag,
+  checks them with `herdr-app check` in a temporary app home, and installs
+  them plus a `.herdr-panopticon` ownership marker into
+  `~/.config/herdr-app/mods/panopticon/`;
+- leaves their keymap and existing layouts alone. On first opening, the mod
+  creates its own `layouts/panopticon.json` with local terminal addresses
+  and remembers the previous layout in shared state;
+- displays real terminal blocks, which resize to their tiles. The mod does
+  not read scrollback, run programs, or make network requests; only the
+  installer downloads from GitHub.
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/eapolinario/herdr-panopticon/main/install.sh | sh
+```
+
+Export `HERDR_APP_HOME` if the app uses another home, or use
+`| sh -s -- --app-home /path/to/herdr-app`. Running the installer again
+updates an installer-managed copy; an unmarked or symlinked mod directory
+is refused, not overwritten. Move or back up an older manual install first.
+`--ref TAG_OR_BRANCH` selects another mod version.
+
+With the app open, toggle from any space:
+
+```sh
+herdr-app do mod.open --name panopticon
+```
+
+Offer **Ctrl+Shift+G** by merging `"ctrl-shift-g": "mod.open:panopticon"`
+into `global` in the person's `keys.json` only where free. The installer
+never edits keys; [keys.json](keys.json) is a snippet, not a replacement.
+
+For removal, switch back first, remove any binding you added, then run:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/eapolinario/herdr-panopticon/main/install.sh | sh -s -- --uninstall
+```
+
+Use the same app home. This removes only the managed mod directory; it
+leaves keys and runtime layouts in place and stops no sessions. Remove the
+runtime layout only if its root ID is `panopticon-agent-grid`. For a manual
+install, remove the mod folder yourself.
+
 ## What you see
 
 A 34 px toolbar says **Panopticon**, **All spaces**, and the agent count; **Back** is on the right. Below it, each tile has a 26 px caption over a live terminal. The caption shows program, space / tab, terminal address and status. The grid uses 4 px outer padding and gaps, 1 px theme-colored tile borders, the theme's chrome and foreground colors, and 12 px terminal type. With four agents there are two equal rows of two. With none, the Back button stays above an empty-state message.
