@@ -2,7 +2,9 @@
 
 A global grid of **live agent terminals** for [Herdr Desktop](https://herdr.dev). See agents from every space at once, type directly into a tile, and return to the layout you were using. No dashboard space, duplicated sessions, or polling terminal output.
 
-![Panopticon showing four demo agents across multiple spaces](preview.png)
+**Demo:** Four agents across three spaces (32 seconds). [Text walkthrough](presentation/README.md#walkthrough)
+
+https://github.com/user-attachments/assets/f749a976-a4f1-40b1-ab5c-716ec52f17d8
 
 ## Try it
 
