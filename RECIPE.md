@@ -14,7 +14,7 @@ installer.
 
 Tell the person first what it does:
 
-- downloads the two standalone mod files from the GitHub **v0.4.0** tag,
+- downloads the two standalone mod files from the GitHub **v0.4.1** tag,
   checks them with `herdr-app check` in a temporary app home, and installs
   them plus a `.herdr-panopticon` ownership marker into
   `~/.config/herdr-app/mods/panopticon/`;

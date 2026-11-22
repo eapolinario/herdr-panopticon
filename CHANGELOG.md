@@ -1,10 +1,17 @@
 # Changelog
 
+## 0.4.1 — 2026-11-22
+
+### Fixed
+- Grid navigation remembers the selected agent and restores the matching pane or helper when leaving the grid.
+- Opening the grid selects the active regular-layout agent, with the remembered tile as fallback.
+- Lateral navigation falls back to the nearest occupied tile in an adjacent row.
+- The installer defaults to `v0.4.1`.
+
 ## 0.4.0 — 2026-11-22
 
 ### Added
 - The grid now marks the currently focused terminal with a highlighted caption, accent dot and native tile focus border.
-- Toggle navigation now remembers the selected agent across grid and regular layouts.
 - The installer defaults to `v0.4.0`.
 
 ## 0.3.0 — 2026-11-22

@@ -2,7 +2,7 @@
 # Download the released mod without a checkout, build tools, or elevated permissions.
 set -eu
 
-ref=v0.4.0
+ref=v0.4.1
 app_home="${HERDR_APP_HOME:-$HOME/.config/herdr-app}"
 uninstall=0
 marker=.herdr-panopticon
@@ -11,7 +11,7 @@ usage() {
   printf '%s\n' \
     'Usage: sh install.sh [--app-home PATH] [--ref TAG_OR_BRANCH] [--uninstall]' \
     '' \
-    'Installs the released Panopticon mod (v0.4.0 by default) and checks it with herdr-app.' \
+    'Installs the released Panopticon mod (v0.4.1 by default) and checks it with herdr-app.' \
     'Run again to update an installer-managed copy. Existing unmarked mods are refused.' \
     'Uses HERDR_APP_HOME, otherwise ~/.config/herdr-app. Keys and layouts are never edited.' \
     'Switch back from the grid before using --uninstall; sessions are not stopped.'
