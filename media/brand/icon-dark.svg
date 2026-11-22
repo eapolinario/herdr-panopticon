@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+<title id="title">Panopticon icon — dark-background</title>
+<desc id="desc">Eight radial cells around a four-pane central observation point, inspired by Jeremy Bentham&#x27;s Panopticon plan and Panopticon&#x27;s live agent grid.</desc>
+<g data-part="cells" fill="#e9eee9"><path d="M134.471 22.198A106 106 0 0 1 198.238 48.611L176.371 73.326A73 73 0 0 0 132.457 55.136Z"/><path d="M207.389 57.762A106 106 0 0 1 233.802 121.529L200.864 123.543A73 73 0 0 0 182.674 79.629Z"/><path d="M233.802 134.471A106 106 0 0 1 207.389 198.238L182.674 176.371A73 73 0 0 0 200.864 132.457Z"/><path d="M198.238 207.389A106 106 0 0 1 134.471 233.802L132.457 200.864A73 73 0 0 0 176.371 182.674Z"/><path d="M121.529 233.802A106 106 0 0 1 57.762 207.389L79.629 182.674A73 73 0 0 0 123.543 200.864Z"/><path d="M48.611 198.238A106 106 0 0 1 22.198 134.471L55.136 132.457A73 73 0 0 0 73.326 176.371Z"/><path d="M22.198 121.529A106 106 0 0 1 48.611 57.762L73.326 79.629A73 73 0 0 0 55.136 123.543Z"/><path d="M57.762 48.611A106 106 0 0 1 121.529 22.198L123.543 55.136A73 73 0 0 0 79.629 73.326Z"/></g>
+<g data-part="tower" fill="#abefdc"><rect x="99" y="99" width="25" height="25" rx="5"/><rect x="132" y="99" width="25" height="25" rx="5"/><rect x="99" y="132" width="25" height="25" rx="5"/><rect x="132" y="132" width="25" height="25" rx="5"/></g>
+</svg>

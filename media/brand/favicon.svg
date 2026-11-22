@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" role="img" aria-labelledby="title desc">
+<title id="title">Panopticon favicon</title>
+<desc id="desc">An optically simplified circular plan with a solid central viewpoint for small sizes.</desc>
+<rect x="0" y="0" width="16" height="16" rx="3.5" fill="#111d23"/><g data-part="cells" fill="#e9eee9"><path d="M8.653 1.784A6.25 6.25 0 0 1 11.933 3.143L10.738 4.619A4.35 4.35 0 0 0 8.455 3.674Z"/><path d="M12.857 4.067A6.25 6.25 0 0 1 14.216 7.347L12.326 7.545A4.35 4.35 0 0 0 11.381 5.262Z"/><path d="M14.216 8.653A6.25 6.25 0 0 1 12.857 11.933L11.381 10.738A4.35 4.35 0 0 0 12.326 8.455Z"/><path d="M11.933 12.857A6.25 6.25 0 0 1 8.653 14.216L8.455 12.326A4.35 4.35 0 0 0 10.738 11.381Z"/><path d="M7.347 14.216A6.25 6.25 0 0 1 4.067 12.857L5.262 11.381A4.35 4.35 0 0 0 7.545 12.326Z"/><path d="M3.143 11.933A6.25 6.25 0 0 1 1.784 8.653L3.674 8.455A4.35 4.35 0 0 0 4.619 10.738Z"/><path d="M1.784 7.347A6.25 6.25 0 0 1 3.143 4.067L4.619 5.262A4.35 4.35 0 0 0 3.674 7.545Z"/><path d="M4.067 3.143A6.25 6.25 0 0 1 7.347 1.784L7.545 3.674A4.35 4.35 0 0 0 5.262 4.619Z"/></g>
+<g data-part="tower" fill="#abefdc"><rect x="6" y="6" width="4" height="4" rx="1"/></g>
+</svg>

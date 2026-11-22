@@ -14,7 +14,7 @@ installer.
 
 Tell the person first what it does:
 
-- downloads the two standalone mod files from the GitHub **v0.1.0** tag,
+- downloads the two standalone mod files from the GitHub **v0.2.0** tag,
   checks them with `herdr-app check` in a temporary app home, and installs
   them plus a `.herdr-panopticon` ownership marker into
   `~/.config/herdr-app/mods/panopticon/`;
@@ -58,18 +58,18 @@ install, remove the mod folder yourself.
 
 ## What you see
 
-A 34 px toolbar says **Panopticon**, **All spaces**, and the agent count; **Back** is on the right. Below it, each tile has a 26 px caption over a live terminal. The caption shows program, space / tab, terminal address and status. The grid uses 4 px outer padding and gaps, 1 px theme-colored tile borders, the theme's chrome and foreground colors, and 12 px terminal type. With four agents there are two equal rows of two. With none, the Back button stays above an empty-state message.
+A 34 px toolbar shows a **24 px Bentham-inspired mark** beside **Panopticon**, **All spaces**, and the agent count; **Back** is on the right. Below it, each tile has a 26 px caption over a live terminal. The caption leads with the existing tab name in bold, followed by workspace and program in muted text; unnamed tabs read **Tab 1**, **Tab 2**, etc. Helpers are identified in the metadata. The full title, terminal address and destination stay in the tooltip; a small address badge is visible only for otherwise-identical captions. Status stays at the right. The grid uses 4 px outer padding and gaps, 1 px theme-colored tile borders, the theme's chrome and foreground colors, and 12 px terminal type. With four agents there are two equal rows of two. With none, the Back button stays above a **48 px mark** and the empty-state message. The mark's ring uses the theme's foreground and its four central panes use the accent.
 
 ## How it behaves
 
 - Open or leave the view with `mod.open:panopticon`; the suggested binding is Ctrl+Shift+G. Back restores the previous layout (or `main` if it no longer exists).
 - A working agent shows **Working**, a blocked or error report shows **Needs you**, done shows **Done**, and idle shows **Idle**. The words use the matching theme colors. A recognized agent without a status shows **Open**. Status changes don't move tiles.
-- The terminal body takes real input, including Escape. Hover over its caption for the title/address and destination. Click the caption to return to the original pane; a live helper without one opens in Peek over its owning tab.
+- The terminal body takes real input, including Escape. Caption names are only a presentation of existing Herdr tab names, not a separate naming registry; status and activity-title changes never rename or reorder tiles. Hover over the caption for full location, title/address and destination. Click the caption to return to the original pane; a live helper without one opens in Peek over its owning tab.
 - Adding/removing agents updates the grid in pane order. The last row leaves empty columns rather than stretching the last tile. Changing the selected space does not filter the view.
 
 ## Built from
 
-One standalone mod, `mods/panopticon/`, with `place: none`. Its small launcher overlay switches to a personal top-level layout, not a tab or space. Make a column with a toolbar and rows, using `ceil(sqrt(agentCount))` columns. Each cell is a column with a caption block and a native `{ terminal: address }` block. Use a weighted spacer at the end of a short row. The mod's block roles are `bar`, `caption`, `spacer` and `empty`; there are no shipped mod or artwork dependencies.
+One standalone mod, `mods/panopticon/`, with `place: none`. Its small launcher overlay switches to a personal top-level layout, not a tab or space. Make a column with a toolbar and rows, using `ceil(sqrt(agentCount))` columns. Each cell is a column with a caption block and a native `{ terminal: address }` block. Use a weighted spacer at the end of a short row. The mod's block roles are `bar`, `caption`, `spacer` and `empty`; there are no shipped mod or artwork dependencies. `brandMark()` draws cached, percentage-based GPUI paths inside the same `main.js`; no SVG file or font is loaded. Its JSON-compatible `BRAND_GEOMETRY` block also supplies the repository's exported icon and logo geometry.
 
 Use `spaces()`, `panes()`, `agents()` and `terminals()` to find sessions. Start at terminal panes in **all** tabs; follow live children even through non-agent workers. Keep only recognized or reporting agents. Use the full machine-qualified address and visit it once. A helper that already has its own pane belongs there, not under its parent as well.
 
