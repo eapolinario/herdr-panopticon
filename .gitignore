@@ -4,6 +4,11 @@
 /mods/*/jsconfig.json
 /mods/*/*.d.ts
 /presentation/__pycache__/
+/branding/__pycache__/
 # Publish the rendered video as a GitHub attachment.
 /media/panopticon.mp4
+# Local direnv state and Nix build outputs.
+/.direnv/
+/result
+/result-*
 .DS_Store

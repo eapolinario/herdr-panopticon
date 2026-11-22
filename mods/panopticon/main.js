@@ -1,4 +1,4 @@
-import { View, div } from "gpui-kit";
+import { View, div, PathBuilder } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import {
   agents, appHome, checking, closeOverlay, layout, layouts, notify, panes, props, readTextFile,
@@ -10,6 +10,62 @@ const NAME = "panopticon";
 const ROOT = "panopticon-agent-grid";
 const RETURN_TO = "panopticon.returnLayout";
 const statusLabel = { working: "Working", blocked: "Needs you", error: "Needs you", done: "Done", idle: "Idle" };
+
+// Single source for the native mark and branding/build.py. Keep the object valid JSON.
+export const BRAND_GEOMETRY = Object.freeze({
+  "size": 256,
+  "center": 128,
+  "cells": 8,
+  "outer": 106,
+  "inner": 73,
+  "gap": 7,
+  "panes": [99, 132],
+  "paneSize": 25,
+  "paneRadius": 5
+});
+Object.freeze(BRAND_GEOMETRY.panes);
+
+let nativeBrandPaths;
+function brandPaths() {
+  if (nativeBrandPaths) return nativeBrandPaths;
+  const g = BRAND_GEOMETRY, percent = value => `${value / g.size * 100}%`;
+  const point = (radius, angle) => {
+    const a = angle * Math.PI / 180;
+    return [percent(g.center + radius * Math.cos(a)), percent(g.center + radius * Math.sin(a))];
+  };
+  const cells = PathBuilder.fill(), panes = PathBuilder.fill();
+  const step = 360 / g.cells;
+  for (let i = 0; i < g.cells; i++) {
+    const start = -90 + i * step + g.gap / 2, end = -90 + (i + 1) * step - g.gap / 2;
+    cells.move_to(...point(g.outer, start))
+      .arc_to(percent(g.outer), percent(g.outer), 0, false, true, ...point(g.outer, end))
+      .line_to(...point(g.inner, end))
+      .arc_to(percent(g.inner), percent(g.inner), 0, false, false, ...point(g.inner, start)).close();
+  }
+  const r = g.paneRadius, s = g.paneSize, radius = percent(r);
+  for (const y of g.panes) for (const x of g.panes) {
+    panes.move_to(percent(x + r), percent(y)).line_to(percent(x + s - r), percent(y))
+      .arc_to(radius, radius, 0, false, true, percent(x + s), percent(y + r))
+      .line_to(percent(x + s), percent(y + s - r))
+      .arc_to(radius, radius, 0, false, true, percent(x + s - r), percent(y + s))
+      .line_to(percent(x + r), percent(y + s))
+      .arc_to(radius, radius, 0, false, true, percent(x), percent(y + s - r))
+      .line_to(percent(x), percent(y + r))
+      .arc_to(radius, radius, 0, false, true, percent(x + r), percent(y)).close();
+  }
+  // Immutable, percentage-based paths work at both sizes and survive theme changes.
+  nativeBrandPaths = { cells: cells.build(), panes: panes.build() };
+  return nativeBrandPaths;
+}
+
+export function brandMark(size, t) {
+  const paths = brandPaths();
+  const layer = (path, color) => window.paint_path(path, color)
+    .absolute().top(0).left(0).size_full();
+  return div().relative().size(size).flex_none()
+    .child(layer(paths.cells, t.foreground))
+    .child(layer(paths.panes, t.accent || t.foreground));
+}
 
 // Anchor ownership in ALL tabs' panes. Follow live descendants, even through non-agent workers,
 // but don't adopt unrelated core terminals. A child with a pane belongs to its own tab.
@@ -101,27 +157,67 @@ async function toggle(overlay, cx) {
   }
 }
 
-function caption({ address, tab }, t) {
-  const a = agents().find(a => a.address === address);
-  const p = a ? null : panes().find(p => p.terminal === address);
-  const term = a ? null : terminals().find(k => k.address === address);
-  const space = a ? null : spaces().find(s => s.tabs.some(c => c.id === tab));
-  const location = [a?.space_name || space?.name, a?.tab_name || space?.tabs.find(c => c.id === tab)?.name];
-  const program = (a || p || term)?.program?.name || term?.name || "Agent";
-  const status = a?.status || p?.status || term?.status;
-  const pane = a?.pane || p?.pane;
-  return h_flex().id("caption").size_full().px(7).gap(6).items_center().bg(t.chrome)
-    .text_size(12).cursor_pointer().hover(el => el.bg(t.hover))
-    .tooltip(`${a?.title || p?.title || program} · ${address} — ${pane ? "Go to original pane" : "Peek at agent"}`)
+// Presentation only: keep the source names, addresses, ownership and ordering intact.
+export function sessionCaptions(items, allSpaces, allPanes, allAgents, allTerminals) {
+  const index = (entries, key) => {
+    const result = new Map();
+    for (const entry of entries) if (entry[key] && !result.has(entry[key])) result.set(entry[key], entry);
+    return result;
+  };
+  const agentByAddress = index(allAgents, "address"), paneByAddress = index(allPanes, "terminal");
+  const terminalByAddress = index(allTerminals, "address"), locations = new Map();
+  for (const space of allSpaces) for (const tab of space.tabs) {
+    if (!locations.has(tab.id)) locations.set(tab.id, { space, tab });
+  }
+  const counts = new Map();
+  const captions = items.map(({ address, tab }) => {
+    const a = agentByAddress.get(address), p = paneByAddress.get(address), term = terminalByAddress.get(address);
+    const owner = locations.get(tab);
+    const spaceName = owner?.space.name || a?.space_name || "";
+    const tabName = owner?.tab.name || a?.tab_name || "";
+    const program = a?.program?.name || p?.program?.name || term?.program?.name || term?.name || "Agent";
+    const unnamed = owner?.tab.named === false || (owner?.tab.named !== true && /^\d+$/.test(tabName));
+    const name = tabName ? (unnamed ? `Tab ${tabName}` : tabName) : program;
+    const status = a?.status || p?.status || term?.status;
+    const pane = a?.pane || p?.pane || null, helper = !pane;
+    const detail = [spaceName, helper ? `${program} helper` : name === program ? "" : program]
+      .filter(Boolean).join(" · ");
+    const title = a?.title || p?.title || term?.title || term?.name || program;
+    const context = [program, [spaceName, name].filter(Boolean).join(" / "), address].join(" · ");
+    const tooltip = `${context}\n${title} — ${pane ? "Go to original pane" : "Peek at agent"}`;
+    // Status and activity titles never influence identity or disambiguation.
+    const key = JSON.stringify([name, spaceName, program, helper]);
+    counts.set(key, (counts.get(key) || 0) + 1);
+    return { address, tab, name, detail, status, pane, tooltip, key };
+  });
+  return captions.map(({ key, ...caption }) => ({
+    ...caption, id: counts.get(key) > 1 ? caption.address : null,
+  }));
+}
+
+export function captionRow(c, t) {
+  return h_flex().id(`caption-${c.address}`).size_full().px(7).gap(6).items_center().bg(t.chrome)
+    .text_size(12).cursor_pointer().hover(el => el.bg(t.hover)).tooltip(c.tooltip)
     .on_click(() => {
       back();
-      if (pane) run("pane.focus", { pane });
-      else { run("tab.select", { id: tab }); run("terminal.peek", { terminal: address }); }
+      if (c.pane) run("pane.focus", { pane: c.pane });
+      else { run("tab.select", { id: c.tab }); run("terminal.peek", { terminal: c.address }); }
     })
-    .child(div().flex_1().min_w(0).truncate().text_color(t.foreground)
-      .child(`${program} · ${location.filter(Boolean).join(" / ")} · ${address}`))
-    .child(div().flex_none().text_color(t[status === "error" ? "blocked" : status] || t.dim)
-      .child(statusLabel[status] || "Open"));
+    .child(h_flex().flex_1().min_w(0).gap(6).items_center().overflow_hidden()
+      .child(div().flex_none().max_w(c.detail ? "65%" : "100%").truncate().font_semibold().text_color(t.foreground).child(c.name))
+      .when(Boolean(c.detail), el => el.child(div().flex_1().min_w(0).truncate().text_color(t.muted).child(c.detail))))
+    .when(Boolean(c.id), el => el.child(div().flex_none().max_w("25%").truncate().text_size(11).text_color(t.dim).child(c.id)))
+    .child(div().flex_none().text_color(t[c.status === "error" ? "blocked" : c.status] || t.dim)
+      .child(statusLabel[c.status] || "Open"));
+}
+
+function caption(item, t) {
+  const tree = layout(), saved = owned(tree) ? tree.children[0].content.props.items : null;
+  const items = Array.isArray(saved) ? saved : [item];
+  const snapshot = [spaces(), panes(), agents(), terminals()];
+  const c = sessionCaptions(items, ...snapshot).find(c => c.address === item.address)
+    || sessionCaptions([item], ...snapshot)[0];
+  return captionRow(c, t);
 }
 
 export default class Panopticon extends View {
@@ -143,12 +239,15 @@ export default class Panopticon extends View {
         if (key !== this.pending) { this.pending = key; run("layout.set", { layout: gridLayout(items) }); }
       } else this.pending = null;
       return h_flex().size_full().px(8).gap(12).items_center().bg(t.chrome).text_size(13)
-        .child(div().font_semibold().text_color(t.foreground).child("Panopticon"))
+        .child(h_flex().flex_none().gap(6).items_center()
+          .child(brandMark(24, t))
+          .child(div().font_semibold().text_color(t.foreground).child("Panopticon")))
         .child(div().flex_1().text_color(t.muted).child(`All spaces · ${items.length} agent${items.length === 1 ? "" : "s"}`))
         .child(div().id("back").px(9).py(3).rounded(5).bg(t.surface).text_color(t.foreground)
           .cursor_pointer().hover(el => el.bg(t.hover)).on_click(back).child(`Back to ${previousLayout()}  ·  Ctrl+Shift+G`));
     }
-    return v_flex().size_full().items_center().justify_center().text_color(t.muted)
+    return v_flex().size_full().items_center().justify_center().gap(12).text_color(t.muted)
+      .when(p.role === "empty", el => el.child(brandMark(48, t)))
       .child(p.role === "empty" ? "No open agent sessions across your spaces." : "Switching layouts…");
   }
 }
