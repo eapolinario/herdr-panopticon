@@ -1,5 +1,6 @@
 {
   "title": "Panopticon",
   "place": "none",
+  "focusable": true,
   "overlay": { "kind": "dialog", "width": 220, "height": 48 }
 }

@@ -2,7 +2,7 @@
 
 [Watch the film](https://github.com/user-attachments/assets/f749a976-a4f1-40b1-ab5c-716ec52f17d8) · [Poster](../media/panopticon-poster.jpg) · 32 seconds, 1080p/30. It works on mute; the MP4 also has an optional English walkthrough track.
 
-The published demo was recorded before v0.2.0: it shows tool-first captions. The current mod leads with the existing tab name; the interactions and grid behavior are unchanged.
+The published demo was recorded before v0.2.0: it shows tool-first captions. The current v0.3.0 mod leads with the existing tab name and adds Alt-arrow/HJKL tile navigation; the recorded grid behavior is otherwise unchanged.
 
 ## Walkthrough
 

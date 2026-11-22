@@ -14,7 +14,7 @@ installer.
 
 Tell the person first what it does:
 
-- downloads the two standalone mod files from the GitHub **v0.2.0** tag,
+- downloads the two standalone mod files from the GitHub **v0.3.0** tag,
   checks them with `herdr-app check` in a temporary app home, and installs
   them plus a `.herdr-panopticon` ownership marker into
   `~/.config/herdr-app/mods/panopticon/`;
@@ -63,6 +63,7 @@ A 34 px toolbar shows a **24 px Bentham-inspired mark** beside **Panopticon**, *
 ## How it behaves
 
 - Open or leave the view with `mod.open:panopticon`; the suggested binding is Ctrl+Shift+G. Back restores the previous layout (or `main` if it no longer exists).
+- Use `Alt+Left/Right/Up/Down` or `Alt+H/J/K/L` to focus neighboring tiles. While the grid is open, existing bindings for those chords are redirected to grid navigation and restored on leave.
 - A working agent shows **Working**, a blocked or error report shows **Needs you**, done shows **Done**, and idle shows **Idle**. The words use the matching theme colors. A recognized agent without a status shows **Open**. Status changes don't move tiles.
 - The terminal body takes real input, including Escape. Caption names are only a presentation of existing Herdr tab names, not a separate naming registry; status and activity-title changes never rename or reorder tiles. Hover over the caption for full location, title/address and destination. Click the caption to return to the original pane; a live helper without one opens in Peek over its owning tab.
 - Adding/removing agents updates the grid in pane order. The last row leaves empty columns rather than stretching the last tile. Changing the selected space does not filter the view.
@@ -73,7 +74,7 @@ One standalone mod, `mods/panopticon/`, with `place: none`. Its small launcher o
 
 Use `spaces()`, `panes()`, `agents()` and `terminals()` to find sessions. Start at terminal panes in **all** tabs; follow live children even through non-agent workers. Keep only recognized or reporting agents. Use the full machine-qualified address and visit it once. A helper that already has its own pane belongs there, not under its parent as well.
 
-Create the runtime layout with `readTextFile` / `writeTextFile` under `appHome()/layouts/`, using the expected previous contents to avoid overwriting concurrent edits. Remember the previous layout with `shared` / `setShared`. Use `layout.switch` to enter or leave; use `layout.set` **only on the mod's own layout** when membership or tab ownership changes. For a caption click, use `pane.focus` or `tab.select` plus `terminal.peek`. No `exec`, `hc`, network calls, periodic screen reads, or screenshot capture in the mod.
+Create the runtime layout with `readTextFile` / `writeTextFile` under `appHome()/layouts/`, using the expected previous contents to avoid overwriting concurrent edits. Remember the previous layout with `shared` / `setShared`. Use `layout.switch` to enter or leave; use `layout.set` **only on the mod's own layout** when membership or tab ownership changes. While open, redirect bindings already present for the eight supported Alt+arrow/HJKL chords through `cx.bind_keys`, restore them in `close(cx)` or Back, and handle the resulting mod commands with `pane.focus { terminal }`. For a caption click, use `pane.focus` or `tab.select` plus `terminal.peek`. No `exec`, `hc`, network calls, periodic screen reads, or screenshot capture in the mod.
 
 ## Watch out
 
@@ -83,4 +84,4 @@ Create the runtime layout with `readTextFile` / `writeTextFile` under `appHome()
 
 ## Done when
 
-`bash tests/check.sh` passes. With agents in different spaces (including split or settled tabs), toggling opens one live tile per agent and skips plain shells. A status change keeps the tile in place. Clicking a caption takes you to the right pane or helper; toggling back restores the previous layout without creating, moving or ending sessions.
+`bash tests/check.sh` passes. With agents in different spaces (including split or settled tabs), toggling opens one live tile per agent and skips plain shells. A status change keeps the tile in place. Clicking a caption takes you to the right pane or helper; Alt+arrow and Alt+HJKL move between neighboring tiles and restore their normal bindings on leave. Toggling back restores the previous layout without creating, moving or ending sessions.

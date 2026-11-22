@@ -1,5 +1,8 @@
 import { View, div } from "gpui-kit";
-import { BRAND_GEOMETRY, brandMark, captionRow, gridLayout, gridSessions, sessionCaptions } from "./panopticon.js";
+import {
+  BRAND_GEOMETRY, brandMark, captionRow, gridLayout, gridNavigationAddress,
+  gridNavigationCommand, gridSessions, sessionCaptions,
+} from "./panopticon.js";
 
 function equal(label, actual, expected) {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
@@ -37,6 +40,36 @@ export default class GridChecks extends View {
     equal("empty state", gridLayout([]).children[1].content.props.role, "empty");
     equal("one full-size tile", gridLayout(sources.slice(0, 1)).children[1].children.length, 1);
     equal("branding keeps the 34 px toolbar", tree.children[0].size.px, 34);
+
+    const moving = [{ address: "a" }, { address: "b" }, { address: "c" }, { address: "d" }];
+    equal("grid navigation right", gridNavigationAddress(moving, "right", "a"), "b");
+    equal("grid navigation down", gridNavigationAddress(moving, "down", "a"), "c");
+    equal("grid navigation left", gridNavigationAddress(moving, "left", "d"), "c");
+    equal("grid navigation up", gridNavigationAddress(moving, "up", "d"), "b");
+    equal("grid navigation stops at edges", [
+      gridNavigationAddress(moving, "left", "a"),
+      gridNavigationAddress(moving, "right", "d"),
+      gridNavigationAddress(moving, "up", "a"),
+      gridNavigationAddress(moving, "down", "d"),
+    ], [null, null, null, null]);
+    equal("grid navigation chooses an edge from no focus", [
+      gridNavigationAddress(moving, "left", null),
+      gridNavigationAddress(moving, "up", null),
+      gridNavigationAddress(moving, "right", null),
+      gridNavigationAddress(moving, "down", null),
+    ], ["d", "d", "a", "a"]);
+    const partial = [...moving, { address: "e" }];
+    equal("grid navigation handles a partial last row", [
+      gridNavigationAddress(partial, "right", "d"),
+      gridNavigationAddress(partial, "down", "b"),
+    ], ["e", "e"]);
+    equal("grid navigation key commands", ["left", "right", "up", "down"].map(d =>
+      gridNavigationCommand(d)), ["left", "right", "up", "down"]);
+    equal("grid navigation namespaced commands", ["navigate:left", "navigate:right", "navigate:up", "navigate:down",
+      "panopticon.left", "panopticon.right", "panopticon.up", "panopticon.down"].map(d =>
+      gridNavigationCommand(d)), ["left", "right", "up", "down", "left", "right", "up", "down"]);
+    equal("grid navigation rejects unknown commands", gridNavigationCommand("tab.next"), null);
+    equal("grid navigation empty", gridNavigationAddress([], "right", null), null);
     equal("brand geometry", BRAND_GEOMETRY, {
       size: 256, center: 128, cells: 8, outer: 106, inner: 73, gap: 7,
       panes: [99, 132], paneSize: 25, paneRadius: 5,
