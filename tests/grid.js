@@ -74,7 +74,12 @@ export default class GridChecks extends View {
       gridNavigationAddress(partial, "right", "e"),
       gridNavigationAddress(partial, "left", "d"),
     ], ["e", "e", "c", "a"]);
-    equal("grid selection prefers the active session", [
+    const incomplete = [{ address: "a" }, { address: "b" }, { address: "c" }];
+    equal("grid navigation clamps to an incomplete adjacent row", [
+      gridNavigationAddress(incomplete, "right", "b"),
+      gridNavigationAddress(incomplete, "left", "c"),
+    ], ["c", "a"]);
+    equal("grid opening prefers the active regular session", [
       gridSelectedAddress(moving, "b", "d"),
       gridSelectedAddress(moving, "missing", "d"),
       gridSelectedAddress(moving, null, "missing"),

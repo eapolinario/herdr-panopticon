@@ -163,21 +163,17 @@ export function gridNavigationAddress(items, direction, currentAddress = null) {
       const start = targetRow * columns;
       if (start >= items.length) continue;
       const end = Math.min(start + columns, items.length);
-      const directional = [];
+      let nearest = null;
       for (let i = start; i < end; i++) {
         const targetColumn = i - start;
-        if (direction === "left" && targetColumn < column) directional.push({ i, targetColumn });
-        if (direction === "right" && targetColumn > column) directional.push({ i, targetColumn });
+        if (direction === "left" && targetColumn < column &&
+          (!nearest || targetColumn > nearest.targetColumn)) nearest = { i, targetColumn };
+        if (direction === "right" && targetColumn > column &&
+          (!nearest || targetColumn < nearest.targetColumn)) nearest = { i, targetColumn };
       }
-      if (directional.length) {
-        directional.sort((a, b) => direction === "left"
-          ? b.targetColumn - a.targetColumn
-          : a.targetColumn - b.targetColumn);
-        return items[directional[0].i].address;
-      }
-      for (let i = start; i < end; i++) {
-        if (i - start === column) return items[i].address;
-      }
+      if (nearest) return items[nearest.i].address;
+      const clampedColumn = Math.min(column, end - start - 1);
+      return items[start + clampedColumn].address;
     }
   }
   if (direction === "up") return row > 0 ? items[index - columns].address : null;
@@ -262,6 +258,8 @@ async function toggle(overlay, cx) {
     if (!layouts().includes(NAME)) throw new Error("Herdr hasn't discovered the grid layout yet. Try again.");
     if ((shared("layout") || "main") !== from) { closeOverlay(overlay); return; }
     setShared(RETURN_TO, from);
+    // From a regular layout, the currently focused agent is the strongest signal.  The
+    // remembered address is only the fallback when that session is not part of the grid.
     const selected = gridSelectedAddress(items, focused()?.terminal || null, shared(FOCUS_ADDRESS));
     if (selected) setShared(FOCUS_ADDRESS, selected);
     closeOverlay(overlay);
@@ -334,7 +332,7 @@ function caption(item, t) {
   const items = Array.isArray(saved) ? saved : [item];
   const snapshot = [spaces(), panes(), agents(), terminals()];
   const actualAddress = focused()?.terminal || null;
-  const focusedAddress = gridSelectedAddress(items, actualAddress, shared(FOCUS_ADDRESS));
+  const focusedAddress = gridSelectedAddress(items, shared(FOCUS_ADDRESS), actualAddress);
   const c = sessionCaptions(items, ...snapshot, focusedAddress).find(c => c.address === item.address)
     || sessionCaptions([item], ...snapshot, focusedAddress)[0];
   if (c.focused) setShared(FOCUS_ADDRESS, c.address);
