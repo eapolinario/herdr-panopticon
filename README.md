@@ -15,7 +15,7 @@ https://github.com/user-attachments/assets/f749a976-a4f1-40b1-ab5c-716ec52f17d8
 
 Tested on Linux with Herdr Desktop **0.1.16** and herdr-core **0.1.21**. The shell installer also targets macOS, but that is not yet tested. Have `herdr-app` and `curl` on your `PATH`; no Git checkout, build, package installation, sudo, or API key is needed. Herdr does not need to be running during installation.
 
-[The installer](install.sh) downloads the released **v0.3.0** mod from GitHub, runs `herdr-app check` in a temporary app home, and installs its two files plus an ownership marker into your app home's `mods/panopticon/`. **It does not edit your keys or existing layouts.**
+[The installer](install.sh) downloads the released **v0.4.0** mod from GitHub, runs `herdr-app check` in a temporary app home, and installs its two files plus an ownership marker into your app home's `mods/panopticon/`. **It does not edit your keys or existing layouts.**
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/eapolinario/herdr-panopticon/main/install.sh | sh
