@@ -1,7 +1,7 @@
 import { View, div } from "gpui-kit";
 import {
   BRAND_GEOMETRY, GRID_LAYOUT_VERSION, brandMark, captionRow, gridLayout, gridNavigationAddress,
-  gridNavigationCommand, gridSessions, sessionCaptions,
+  gridNavigationCommand, gridSelectedAddress, gridSessionDestination, gridSessions, sessionCaptions,
 } from "./panopticon.js";
 
 function equal(label, actual, expected) {
@@ -51,12 +51,16 @@ export default class GridChecks extends View {
     equal("grid navigation down", gridNavigationAddress(moving, "down", "a"), "c");
     equal("grid navigation left", gridNavigationAddress(moving, "left", "d"), "c");
     equal("grid navigation up", gridNavigationAddress(moving, "up", "d"), "b");
-    equal("grid navigation stops at edges", [
-      gridNavigationAddress(moving, "left", "a"),
+    equal("grid navigation falls back to adjacent lateral tiles", [
       gridNavigationAddress(moving, "right", "d"),
+      gridNavigationAddress(moving, "left", "a"),
+      gridNavigationAddress(moving, "right", "b"),
+      gridNavigationAddress(moving, "left", "c"),
+    ], ["b", "c", "d", "a"]);
+    equal("grid navigation stops at vertical edges", [
       gridNavigationAddress(moving, "up", "a"),
       gridNavigationAddress(moving, "down", "d"),
-    ], [null, null, null, null]);
+    ], [null, null]);
     equal("grid navigation chooses an edge from no focus", [
       gridNavigationAddress(moving, "left", null),
       gridNavigationAddress(moving, "up", null),
@@ -67,7 +71,23 @@ export default class GridChecks extends View {
     equal("grid navigation handles a partial last row", [
       gridNavigationAddress(partial, "right", "d"),
       gridNavigationAddress(partial, "down", "b"),
-    ], ["e", "e"]);
+      gridNavigationAddress(partial, "right", "e"),
+      gridNavigationAddress(partial, "left", "d"),
+    ], ["e", "e", "c", "a"]);
+    equal("grid selection prefers the active session", [
+      gridSelectedAddress(moving, "b", "d"),
+      gridSelectedAddress(moving, "missing", "d"),
+      gridSelectedAddress(moving, null, "missing"),
+      gridSelectedAddress([], "b", "d"),
+    ], ["b", "d", "a", null]);
+    equal("grid session destination returns the original pane",
+      gridSessionDestination([{ address: "b", tab: "tab-b" }],
+        [{ terminal: "b", pane: "pane-b" }], [{ address: "b", pane: "pane-agent-b" }], "b"),
+      { pane: "pane-agent-b" });
+    equal("grid helper destination returns to peek",
+      gridSessionDestination([{ address: "helper", tab: "tab-b" }],
+        [{ terminal: "helper", pane: null }], [{ address: "helper", pane: null }], "helper"),
+      { tab: "tab-b", terminal: "helper" });
     equal("grid navigation key commands", ["left", "right", "up", "down"].map(d =>
       gridNavigationCommand(d)), ["left", "right", "up", "down"]);
     equal("grid navigation namespaced commands", ["navigate:left", "navigate:right", "navigate:up", "navigate:down",

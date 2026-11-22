@@ -9,6 +9,7 @@ import {
 const NAME = "panopticon";
 const ROOT = "panopticon-agent-grid";
 const RETURN_TO = "panopticon.returnLayout";
+const FOCUS_ADDRESS = "panopticon.focusAddress";
 export const GRID_LAYOUT_VERSION = 1;
 const statusLabel = { working: "Working", blocked: "Needs you", error: "Needs you", done: "Done", idle: "Idle" };
 
@@ -95,6 +96,25 @@ export function gridSessions(allSpaces, allPanes, allAgents, allTerminals) {
   return result;
 }
 const sessions = () => gridSessions(spaces(), panes(), agents(), terminals());
+
+export function gridSelectedAddress(items, preferredAddress = null, rememberedAddress = null) {
+  if (!Array.isArray(items) || !items.length) return null;
+  if (preferredAddress && items.some(item => item.address === preferredAddress)) return preferredAddress;
+  if (rememberedAddress && items.some(item => item.address === rememberedAddress)) return rememberedAddress;
+  return items[0].address;
+}
+
+export function gridSessionDestination(items, allPanes, allAgents, address) {
+  if (!address || !Array.isArray(items)) return null;
+  const item = items.find(item => item.address === address);
+  if (!item) return null;
+  const agent = allAgents?.find(a => a.address === address);
+  const pane = allPanes?.find(p => p.terminal === address);
+  const originalPane = agent?.pane || pane?.pane || null;
+  if (originalPane) return { pane: originalPane };
+  return item.tab ? { tab: item.tab, terminal: address } : null;
+}
+
 const sameSessions = (a, b) => Array.isArray(a) && a.length === b.length &&
   a.every((s, i) => s.address === b[i].address && s.tab === b[i].tab);
 
@@ -135,8 +155,31 @@ export function gridNavigationAddress(items, direction, currentAddress = null) {
   }
   const columns = Math.ceil(Math.sqrt(items.length));
   const row = Math.floor(index / columns), column = index - row * columns;
-  if (direction === "left") return column > 0 ? items[index - 1].address : null;
-  if (direction === "right") return column + 1 < columns && index + 1 < items.length ? items[index + 1].address : null;
+  if (direction === "left" && column > 0) return items[index - 1].address;
+  if (direction === "right" && column + 1 < columns && index + 1 < items.length) return items[index + 1].address;
+  if (direction === "left" || direction === "right") {
+    for (const targetRow of [row - 1, row + 1]) {
+      if (targetRow < 0) continue;
+      const start = targetRow * columns;
+      if (start >= items.length) continue;
+      const end = Math.min(start + columns, items.length);
+      const directional = [];
+      for (let i = start; i < end; i++) {
+        const targetColumn = i - start;
+        if (direction === "left" && targetColumn < column) directional.push({ i, targetColumn });
+        if (direction === "right" && targetColumn > column) directional.push({ i, targetColumn });
+      }
+      if (directional.length) {
+        directional.sort((a, b) => direction === "left"
+          ? b.targetColumn - a.targetColumn
+          : a.targetColumn - b.targetColumn);
+        return items[directional[0].i].address;
+      }
+      for (let i = start; i < end; i++) {
+        if (i - start === column) return items[i].address;
+      }
+    }
+  }
   if (direction === "up") return row > 0 ? items[index - columns].address : null;
   if (direction === "down") {
     const target = row * columns + column + columns;
@@ -179,9 +222,24 @@ function previousLayout() {
   const name = shared(RETURN_TO);
   return name !== NAME && layouts().includes(name) ? name : "main";
 }
-const back = cx => {
+function focusGridSession(address) {
+  const destination = gridSessionDestination(sessions(), panes(), agents(), address);
+  if (!destination) return;
+  if (destination.pane) run("pane.focus", { pane: destination.pane });
+  else {
+    run("tab.select", { id: destination.tab });
+    run("terminal.peek", { terminal: destination.terminal });
+  }
+}
+
+const back = (cx, address = null) => {
   if (cx) restoreGridNavigation(cx);
+  const items = sessions();
+  const remembered = shared(FOCUS_ADDRESS);
+  const selected = gridSelectedAddress(items, address || remembered || null, focused()?.terminal);
+  if (selected) setShared(FOCUS_ADDRESS, selected);
   run("layout.switch", { name: previousLayout() });
+  if (selected) focusGridSession(selected);
 };
 
 async function toggle(overlay, cx) {
@@ -204,8 +262,11 @@ async function toggle(overlay, cx) {
     if (!layouts().includes(NAME)) throw new Error("Herdr hasn't discovered the grid layout yet. Try again.");
     if ((shared("layout") || "main") !== from) { closeOverlay(overlay); return; }
     setShared(RETURN_TO, from);
+    const selected = gridSelectedAddress(items, focused()?.terminal || null, shared(FOCUS_ADDRESS));
+    if (selected) setShared(FOCUS_ADDRESS, selected);
     closeOverlay(overlay);
     run("layout.switch", { name: NAME });
+    if (selected) run("pane.focus", { terminal: selected });
   } catch (error) {
     closeOverlay(overlay);
     notify({ title: "Couldn't open Panopticon", body: String(error), level: "error" });
@@ -256,9 +317,8 @@ export function captionRow(c, t) {
   return h_flex().id(`caption-${c.address}`).size_full().px(7).gap(6).items_center().bg(c.focused ? t.selected : t.chrome)
     .text_size(12).cursor_pointer().hover(el => el.bg(t.hover)).tooltip(c.tooltip)
     .on_click((_e, cx) => {
-      back(cx);
-      if (c.pane) run("pane.focus", { pane: c.pane });
-      else { run("tab.select", { id: c.tab }); run("terminal.peek", { terminal: c.address }); }
+      setShared(FOCUS_ADDRESS, c.address);
+      back(cx, c.address);
     })
     .when(Boolean(c.focused), el => el.child(div().id(`focused-${c.address}`).flex_none().size(7).rounded(7).bg(t.accent).tooltip("Currently focused")))
     .child(h_flex().flex_1().min_w(0).gap(6).items_center().overflow_hidden()
@@ -273,9 +333,11 @@ function caption(item, t) {
   const tree = layout(), saved = owned(tree) ? tree.children[0].content.props.items : null;
   const items = Array.isArray(saved) ? saved : [item];
   const snapshot = [spaces(), panes(), agents(), terminals()];
-  const focusedAddress = focused()?.terminal || null;
+  const actualAddress = focused()?.terminal || null;
+  const focusedAddress = gridSelectedAddress(items, actualAddress, shared(FOCUS_ADDRESS));
   const c = sessionCaptions(items, ...snapshot, focusedAddress).find(c => c.address === item.address)
     || sessionCaptions([item], ...snapshot, focusedAddress)[0];
+  if (c.focused) setShared(FOCUS_ADDRESS, c.address);
   return captionRow(c, t);
 }
 
@@ -307,8 +369,13 @@ export default class Panopticon extends View {
       run("pane.go", { direction });
       return;
     }
-    const next = gridNavigationAddress(sessions(), direction, focused()?.terminal);
-    if (next) run("pane.focus", { terminal: next });
+    const items = sessions();
+    const current = gridSelectedAddress(items, shared(FOCUS_ADDRESS), focused()?.terminal);
+    const next = gridNavigationAddress(items, direction, current);
+    if (next) {
+      setShared(FOCUS_ADDRESS, next);
+      run("pane.focus", { terminal: next });
+    }
   }
 
   render() {
