@@ -1,6 +1,6 @@
 # Panopticon
 
-Switch the entire Herdr window to an evenly spaced grid of live agent terminals, irrespective of the selected space. Find an agent by its space and tab, watch it work, type in its tile, or go back to where that agent lives.
+A multi-agent dashboard for monitoring live agent terminals across all Herdr spaces. Switch the entire window to an evenly spaced grid for an at-a-glance overview, type directly into any tile, or return to the agent's original tab.
 
 ![Panopticon](preview.png)
 
