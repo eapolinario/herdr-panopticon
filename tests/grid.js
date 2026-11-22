@@ -112,16 +112,18 @@ export default class GridChecks extends View {
         { id: "default", name: "1", named: false }, { id: "numeric", name: "7", named: true }] },
       { name: "Relay", tabs: [{ id: "remote", name: "API review", named: true }] },
     ];
+    const claude = { name: "Claude Code", key: "claude", agent: true, icon: "icons/test-color.svg", tint: false };
+    const pi = { name: "Pi", key: "pi", agent: true, icon: "icons/test-mono.svg", tint: true };
     const owners = [
-      { terminal: "t3", tab: "review", pane: "p3", program: { name: "Claude Code" } },
-      { terminal: "t4", tab: "default", pane: "p4", program: { name: "Pi" }, status: "idle" },
-      { terminal: "t5", tab: "review", pane: "p5", program: { name: "Claude Code" } },
-      { terminal: "remote/t3", tab: "remote", pane: "remote/p3", program: { name: "Claude Code" } },
-      { terminal: "t7", tab: "numeric", pane: "p7", program: { name: "Pi" } },
+      { terminal: "t3", tab: "review", pane: "p3", program: claude },
+      { terminal: "t4", tab: "default", pane: "p4", program: pi, status: "idle" },
+      { terminal: "t5", tab: "review", pane: "p5", program: claude },
+      { terminal: "remote/t3", tab: "remote", pane: "remote/p3", program: claude },
+      { terminal: "t7", tab: "numeric", pane: "p7", program: pi },
     ];
-    const reports = [{ address: "t3", pane: "p3", program: { name: "Claude Code" },
+    const reports = [{ address: "t3", pane: "p3", program: claude,
       title: "Reviewing response handling", status: "blocked" }];
-    const helpers = ["helper1", "helper2"].map(address => ({ address, program: { name: "Pi" },
+    const helpers = ["helper1", "helper2"].map(address => ({ address, program: pi,
       title: "Current activity", parent: "t3", status: "working" }));
     const named = { address: "t3", tab: "review" }, helper = { address: "helper1", tab: "review" };
     const basic = sessionCaptions([named, { address: "t4", tab: "default" },
@@ -129,10 +131,13 @@ export default class GridChecks extends View {
     equal("existing tab name leads", basic[0].name, "API review");
     equal("workspace and tool are secondary", basic[0].detail, "Beacon · Claude Code");
     equal("unique captions hide addresses", basic.map(c => c.id), [null, null, null, null]);
-    equal("unnamed tabs get an explicit slot label", basic[1].name, "Tab 1");
+    equal("unnamed tabs fall back to the program like default tabs", basic[1].name, "Pi");
     equal("explicit numeric names are preserved", basic[2].name, "7");
     equal("helpers keep their owner's task name", basic[3].name, "API review");
     equal("helpers are identified in metadata", basic[3].detail, "Beacon · Pi helper");
+    equal("captions use agent, pane and helper program icons", basic.map(c => [c.icon, c.tint]), [
+      [claude.icon, false], [pi.icon, true], [pi.icon, true], [pi.icon, true],
+    ]);
     equal("pane destination is preserved", basic[0].pane, "p3");
     equal("currently focused caption is marked", [basic[0].focused, basic[1].focused], [true, false]);
     equal("focused tooltip is explicit", basic[0].tooltip.includes("Currently focused"), true);
@@ -150,15 +155,90 @@ export default class GridChecks extends View {
     const changed = sessionCaptions(peers, locations, owners,
       reports.map(a => ({ ...a, status: "working", title: "Running tests" })), helpers);
     const identities = list => list.map(({ address, name, detail, id, pane }) => ({ address, name, detail, id, pane }));
-    equal("status/activity changes never rename or reorder sessions", identities(changed), identities(duplicates));
+    equal("custom captions stay put through status/activity changes", identities(changed), identities(duplicates));
+
+    const autoTab = { id: "auto", name: "2", named: false };
+    const automatic = (title, tab = autoTab, program = claude, address = "auto/t") => sessionCaptions(
+      [{ address, tab: tab.id }], [{ name: "Beacon", tabs: [tab] }],
+      [{ terminal: address, tab: tab.id, pane: "auto/p", program, title }], [], [])[0];
+    equal("unnamed tabs follow the cleaned live session title", automatic("✦ Review response handling").name,
+      "Review response handling");
+    equal("program-named tabs follow the live session title",
+      automatic("my-task", { ...autoTab, name: "Claude Code", named: true }).name, "my-task");
+    equal("custom names override the live title",
+      automatic("my-task", { ...autoTab, name: "fix login", named: true }).name, "fix login");
+    equal("explicit numeric names override the live title",
+      automatic("my-task", { ...autoTab, name: "7", named: true }).name, "7");
+    equal("legacy custom names are preserved without a named flag",
+      automatic("my-task", { id: "auto", name: "fix login" }).name, "fix login");
+    equal("legacy numeric slots use the live title without a named flag",
+      automatic("my-task", { id: "auto", name: "2" }).name, "my-task");
+    for (const [title, expected] of [
+      ["✦ [web] login", "[web] login"], ["⠋ - Thinking", "Thinking"],
+      ["[ ! ] Implement login", "Implement login"], ["[ . ] Implement login", "Implement login"],
+      ["“login flow”", "“login flow”"], ["修复登录", "修复登录"],
+      ["", "Claude Code"], ["✦", "Claude Code"], ["Claude Code", "Claude Code"], ["CLAUDE", "Claude Code"],
+      ["me@build-box", "Claude Code"], ["~/src/api", "Claude Code"], ["✦ /tmp", "Claude Code"],
+      ["C:\\src\\api", "Claude Code"], ["✦ C:\\src\\api", "Claude Code"],
+    ]) {
+      equal(`default-style title cleaning: ${JSON.stringify(title)}`, automatic(title).name, expected);
+    }
+    for (const address of ["t2", "remote/t2"]) {
+      equal("address titles fall back to the program", automatic(address, autoTab, claude, address).name, "Claude Code");
+      equal("address titles do not replace program-named tabs",
+        automatic(address, { ...autoTab, name: "Claude Code", named: true }, claude, address).name, "Claude Code");
+    }
+    equal("non-agent program titles never replace the name",
+      automatic("vim notes.md", autoTab, { name: "zsh", key: "zsh", shell: true }).name, "zsh");
+    const missingProgram = automatic("my-task", autoTab, null);
+    equal("missing program metadata has an agent fallback", missingProgram.name, "Agent");
+    equal("missing program metadata has no icon", [missingProgram.icon, missingProgram.tint], [null, false]);
+    const iconless = automatic("my-task", autoTab, { ...claude, icon: null });
+    equal("programs without an icon keep their title", [iconless.name, iconless.icon], ["my-task", null]);
+    equal("raw live titles remain in the tooltip", automatic("✦ [web] login").tooltip.includes("✦ [web] login"), true);
+
+    const autoItems = [{ address: "auto/1", tab: "auto" }, { address: "auto/2", tab: "auto" },
+      { address: "auto/helper", tab: "auto" }];
+    const autoSpaces = [{ name: "Beacon", tabs: [autoTab] }];
+    const autoPanes = [
+      { terminal: "auto/1", pane: "auto/p1", program: claude, title: "✦ First task" },
+      { terminal: "auto/2", pane: "auto/p2", program: claude, title: "Second task" },
+    ];
+    const autoHelpers = [{ address: "auto/helper", program: pi, title: "[ . ] Check tests", parent: "auto/1" }];
+    const autoBefore = sessionCaptions(autoItems, autoSpaces, autoPanes, [], autoHelpers);
+    equal("split agents and helpers use their own session titles", autoBefore.map(c => c.name),
+      ["First task", "Second task", "Check tests"]);
+    equal("distinct session titles need no visible address", autoBefore.map(c => c.id), [null, null, null]);
+    equal("automatic helpers keep their destination and metadata",
+      [autoBefore[2].pane, autoBefore[2].tab, autoBefore[2].detail], [null, "auto", "Beacon · Pi helper"]);
+    const autoAfter = sessionCaptions(autoItems, autoSpaces,
+      autoPanes.map(p => ({ ...p, title: "✦ Renamed task", status: "working" })), [], autoHelpers);
+    equal("automatic captions refresh with session titles", autoAfter.map(c => c.name),
+      ["Renamed task", "Renamed task", "Check tests"]);
+    equal("identical live labels are disambiguated", autoAfter.map(c => c.id), ["auto/1", "auto/2", null]);
+    const destinations = list => list.map(({ address, tab, pane }) => ({ address, tab, pane }));
+    equal("title/status updates preserve order and destinations", destinations(autoAfter), destinations(autoBefore));
+    const mixedPanes = sessionCaptions(autoItems, autoSpaces,
+      [autoPanes[0], { ...autoPanes[1], program: pi }], [], autoHelpers);
+    equal("panes in the same tab use their own harness icons", mixedPanes.map(c => [c.icon, c.tint]), [
+      [claude.icon, false], [pi.icon, true], [pi.icon, true],
+    ]);
+    const changedIcons = sessionCaptions(autoItems, autoSpaces,
+      autoPanes.map(p => ({ ...p, program: { ...p.program, icon: pi.icon, tint: true } })), [], autoHelpers);
+    equal("icon changes never rename, reorder or retarget captions", identities(changedIcons), identities(autoBefore));
+    equal("status-only updates leave captions unchanged", identities(sessionCaptions(autoItems, autoSpaces,
+      autoPanes.map(p => ({ ...p, status: "blocked" })), [], autoHelpers)), identities(autoBefore));
     equal("empty caption list", sessionCaptions([], locations, owners, reports, helpers), []);
     const colors = { chrome: "#21252b", selected: "#30343b", hover: "#30343b", foreground: "#e9eee9", muted: "#91aaa9",
       dim: "#677777", accent: "#abefdc", blocked: "#ff765c", working: "#f7d38a" };
-    // Exercise native path construction at both sizes, with dark/light tokens and
-    // a missing-accent fallback. The production install still has only two files.
-    return div().flex().items_center().gap(12).child("Panopticon grid, caption and brand checks passed")
+    // Exercise full-color images, theme-tinted SVGs, iconless captions and native brand paths.
+    // Test icon assets live only in the scratch app home; the install still has two mod files.
+    return div().flex().items_center().gap(12).child("Panopticon grid, caption, harness icon and brand checks passed")
       .child(div().w(360).h(26).child(captionRow(basic[0], colors)))
       .child(div().w(240).h(26).child(captionRow(duplicates[2], colors)))
+      .child(div().w(240).h(26).child(captionRow(autoBefore[2], { ...colors, dim: "#526573", foreground: "#111d23" })))
+      .child(div().w(240).h(26).child(captionRow(iconless, colors)))
+      .child(div().w(240).h(26).child(captionRow(missingProgram, colors)))
       .child(brandMark(24, { foreground: "#e9eee9", accent: "#abefdc" }))
       .child(brandMark(48, { foreground: "#111d23", accent: "#286e5b" }))
       .child(brandMark(24, { foreground: "#111d23" }));

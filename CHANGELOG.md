@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0 — 2026-11-22
+
+### Added
+- Grid titles show each terminal's harness icon, including helpers, using the same size and theme-aware rendering as regular pane headers.
+
+### Changed
+- Grid captions follow the default view's naming rules: custom tab names stay, while unnamed or program-named agents use cleaned-up live session titles, falling back to the program name. Title changes never move tiles.
+- The installer defaults to `v0.5.0`.
+
 ## 0.4.1 — 2026-11-22
 
 ### Fixed

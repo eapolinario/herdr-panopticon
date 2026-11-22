@@ -73,7 +73,7 @@ default_mod="$HOME/.config/herdr-app/mods/panopticon"
 cmp "$scratch/source/main.js" "$default_mod/main.js"
 cmp "$scratch/source/mod.json" "$default_mod/mod.json"
 [[ -f "$default_mod/.herdr-panopticon" && ! -e "$default_mod/editor-support.txt" ]]
-grep -q '/v0.4.1/mods/panopticon/main.js$' "$PANOPTICON_TEST_DOWNLOADS"
+grep -q '/v0.5.0/mods/panopticon/main.js$' "$PANOPTICON_TEST_DOWNLOADS"
 grep -q 'herdr-app do mod.open --name panopticon' "$scratch/output"
 
 # An exported app home with spaces is honored; keys and unrelated runtime layouts survive.

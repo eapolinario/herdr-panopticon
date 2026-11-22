@@ -1,4 +1,4 @@
-import { View, div, PathBuilder } from "gpui-kit";
+import { View, div, svg, image, PathBuilder } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import {
   agents, appHome, checking, closeOverlay, focused, keys, layout, layouts, nextCommand, notify, panes,
@@ -271,6 +271,20 @@ async function toggle(overlay, cx) {
   }
 }
 
+// Herdr's default tab naming, applied to each tile's terminal. Keep this mod self-contained:
+// custom names stay; unnamed/program-named agents follow a meaningful, cleaned live title.
+function sessionName(tab, program, title, address) {
+  const prog = program.name;
+  const named = tab.named ?? Boolean(tab.name && !/^\d+$/.test(tab.name));
+  const base = named ? tab.name : prog;
+  if (!program.agent) return base;
+  const live = (title ?? "").replace(/^[^\p{L}\p{N}\p{Ps}\p{Pi}]+/u, "").replace(/^\[ [!.] \] /, "").trim();
+  // Inspect the raw title too: cleaning strips a path's leading ~ or /.
+  const path = /^[~/]|^[A-Za-z]:\\/.test((title ?? "").replace(/^[^\p{L}\p{N}~/]+/u, ""));
+  const telling = live && live !== address && live !== prog && !path && !live.includes("@") && live.toLowerCase() !== program.key;
+  return (!named || tab.name === prog) && telling ? live : base;
+}
+
 // Presentation only: keep the source names, addresses, ownership and ordering intact.
 export function sessionCaptions(items, allSpaces, allPanes, allAgents, allTerminals, focusedAddress = null) {
   const index = (entries, key) => {
@@ -289,22 +303,23 @@ export function sessionCaptions(items, allSpaces, allPanes, allAgents, allTermin
     const owner = locations.get(tab);
     const spaceName = owner?.space.name || a?.space_name || "";
     const tabName = owner?.tab.name || a?.tab_name || "";
+    const programInfo = a?.program || p?.program || term?.program;
+    const icon = programInfo?.icon || null, tint = Boolean(programInfo?.tint);
     const program = a?.program?.name || p?.program?.name || term?.program?.name || term?.name || "Agent";
-    const unnamed = owner?.tab.named === false || (owner?.tab.named !== true && /^\d+$/.test(tabName));
-    const name = tabName ? (unnamed ? `Tab ${tabName}` : tabName) : program;
+    const title = a?.title || p?.title || term?.title || term?.name || program;
+    const name = sessionName({ name: tabName, named: owner?.tab.named }, { ...programInfo, name: program }, title, address);
     const status = a?.status || p?.status || term?.status;
     const pane = a?.pane || p?.pane || null, helper = !pane;
     const detail = [spaceName, helper ? `${program} helper` : name === program ? "" : program]
       .filter(Boolean).join(" · ");
-    const title = a?.title || p?.title || term?.title || term?.name || program;
     const context = [program, [spaceName, name].filter(Boolean).join(" / "), address].join(" · ");
     const destination = pane ? "Go to original pane" : "Peek at agent";
     const focused = address === focusedAddress;
     const tooltip = `${context}\n${title} — ${destination}${focused ? "\nCurrently focused" : ""}`;
-    // Status and activity titles never influence identity or disambiguation.
+    // Disambiguate visible labels, never using status to name or reorder sessions.
     const key = JSON.stringify([name, spaceName, program, helper]);
     counts.set(key, (counts.get(key) || 0) + 1);
-    return { address, tab, name, detail, status, pane, tooltip, key, focused };
+    return { address, tab, name, detail, icon, tint, status, pane, tooltip, key, focused };
   });
   return captions.map(({ key, ...caption }) => ({
     ...caption, id: counts.get(key) > 1 ? caption.address : null,
@@ -319,6 +334,10 @@ export function captionRow(c, t) {
       back(cx, c.address);
     })
     .when(Boolean(c.focused), el => el.child(div().id(`focused-${c.address}`).flex_none().size(7).rounded(7).bg(t.accent).tooltip("Currently focused")))
+    // Match regular pane headers: tint monochrome SVGs, preserve full-color image icons.
+    .when(Boolean(c.icon), el => el.child(c.tint
+      ? svg(c.icon).size(14).flex_none().text_color(t.dim)
+      : image(c.icon).w(14).h(14).flex_none()))
     .child(h_flex().flex_1().min_w(0).gap(6).items_center().overflow_hidden()
       .child(div().flex_none().max_w(c.detail ? "65%" : "100%").truncate().font_semibold().text_color(t.foreground).child(c.name))
       .when(Boolean(c.detail), el => el.child(div().flex_1().min_w(0).truncate().text_color(t.muted).child(c.detail))))
@@ -382,8 +401,8 @@ export default class Panopticon extends View {
     if (p.role === "spacer") return div();
     if (p.role === "bar") {
       const items = sessions();
-      // Only membership/location changes rebuild the grid. Output paints natively, and status
-      // changes update captions without moving tiles or repeatedly resizing running terminals.
+      // Only membership/location changes rebuild the grid. Output paints natively; title and
+      // status changes update captions without moving tiles or resizing running terminals.
       if (!checking() && shared("layout") === NAME && owned(layout()) &&
         (p.version !== GRID_LAYOUT_VERSION || !sameSessions(p.items, items))) {
         const key = JSON.stringify(items);
