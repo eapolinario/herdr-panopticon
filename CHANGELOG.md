@@ -4,6 +4,7 @@
 
 ### Added
 - The grid now marks the currently focused terminal with a highlighted caption, accent dot and native tile focus border.
+- Toggle navigation now remembers the selected agent across grid and regular layouts.
 - The installer defaults to `v0.4.0`.
 
 ## 0.3.0 — 2026-11-22
