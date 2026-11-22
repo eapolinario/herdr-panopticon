@@ -1,6 +1,6 @@
 import { View, div } from "gpui-kit";
 import {
-  BRAND_GEOMETRY, brandMark, captionRow, gridLayout, gridNavigationAddress,
+  BRAND_GEOMETRY, GRID_LAYOUT_VERSION, brandMark, captionRow, gridLayout, gridNavigationAddress,
   gridNavigationCommand, gridSessions, sessionCaptions,
 } from "./panopticon.js";
 
@@ -40,6 +40,11 @@ export default class GridChecks extends View {
     equal("empty state", gridLayout([]).children[1].content.props.role, "empty");
     equal("one full-size tile", gridLayout(sources.slice(0, 1)).children[1].children.length, 1);
     equal("branding keeps the 34 px toolbar", tree.children[0].size.px, 34);
+    equal("grid layout version", tree.children[0].content.props.version, GRID_LAYOUT_VERSION);
+    equal("tile focus border uses accent", nodes.filter(n => /^agent-.+/.test(n.id) && n.type === "column")
+      .map(n => n.focus?.border), [
+        { width: 2, color: "accent" }, { width: 2, color: "accent" }, { width: 2, color: "accent" },
+      ]);
 
     const moving = [{ address: "a" }, { address: "b" }, { address: "c" }, { address: "d" }];
     equal("grid navigation right", gridNavigationAddress(moving, "right", "a"), "b");
@@ -95,7 +100,7 @@ export default class GridChecks extends View {
       title: "Current activity", parent: "t3", status: "working" }));
     const named = { address: "t3", tab: "review" }, helper = { address: "helper1", tab: "review" };
     const basic = sessionCaptions([named, { address: "t4", tab: "default" },
-      { address: "t7", tab: "numeric" }, helper], locations, owners, reports, helpers);
+      { address: "t7", tab: "numeric" }, helper], locations, owners, reports, helpers, "t3");
     equal("existing tab name leads", basic[0].name, "API review");
     equal("workspace and tool are secondary", basic[0].detail, "Beacon · Claude Code");
     equal("unique captions hide addresses", basic.map(c => c.id), [null, null, null, null]);
@@ -104,6 +109,8 @@ export default class GridChecks extends View {
     equal("helpers keep their owner's task name", basic[3].name, "API review");
     equal("helpers are identified in metadata", basic[3].detail, "Beacon · Pi helper");
     equal("pane destination is preserved", basic[0].pane, "p3");
+    equal("currently focused caption is marked", [basic[0].focused, basic[1].focused], [true, false]);
+    equal("focused tooltip is explicit", basic[0].tooltip.includes("Currently focused"), true);
     equal("helper still peeks over its owning tab", [basic[3].pane, basic[3].tab], [null, "review"]);
     equal("tooltip keeps debug address and destination", basic[0].tooltip.includes("t3")
       && basic[0].tooltip.includes("Go to original pane"), true);
@@ -120,8 +127,8 @@ export default class GridChecks extends View {
     const identities = list => list.map(({ address, name, detail, id, pane }) => ({ address, name, detail, id, pane }));
     equal("status/activity changes never rename or reorder sessions", identities(changed), identities(duplicates));
     equal("empty caption list", sessionCaptions([], locations, owners, reports, helpers), []);
-    const colors = { chrome: "#21252b", hover: "#30343b", foreground: "#e9eee9", muted: "#91aaa9",
-      dim: "#677777", blocked: "#ff765c", working: "#f7d38a" };
+    const colors = { chrome: "#21252b", selected: "#30343b", hover: "#30343b", foreground: "#e9eee9", muted: "#91aaa9",
+      dim: "#677777", accent: "#abefdc", blocked: "#ff765c", working: "#f7d38a" };
     // Exercise native path construction at both sizes, with dark/light tokens and
     // a missing-accent fallback. The production install still has only two files.
     return div().flex().items_center().gap(12).child("Panopticon grid, caption and brand checks passed")

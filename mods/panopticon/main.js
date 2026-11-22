@@ -9,6 +9,7 @@ import {
 const NAME = "panopticon";
 const ROOT = "panopticon-agent-grid";
 const RETURN_TO = "panopticon.returnLayout";
+export const GRID_LAYOUT_VERSION = 1;
 const statusLabel = { working: "Working", blocked: "Needs you", error: "Needs you", done: "Done", idle: "Idle" };
 
 // Single source for the native mark and branding/build.py. Keep the object valid JSON.
@@ -102,12 +103,14 @@ const panel = (role, data = {}) => ({ mod: NAME, props: { role, ...data } });
 
 // These are native terminal blocks, not excerpts read from scrollback. No active-space/tab block.
 export function gridLayout(items) {
-  const children = [block("panopticon-bar", panel("bar", { items }), { size: { px: 34 } })];
+  const children = [block("panopticon-bar", panel("bar", { items, version: GRID_LAYOUT_VERSION }), { size: { px: 34 } })];
   const columns = Math.ceil(Math.sqrt(items.length));
   for (let i = 0; i < items.length; i += columns) {
     const cells = items.slice(i, i + columns).map(item => {
       const id = `agent-${encodeURIComponent(item.address)}`;
-      return { id, type: "column", resizable: false, border: { width: 1, color: "border" }, children: [
+      return { id, type: "column", resizable: false,
+        border: { width: 1, color: "border" },
+        focus: { border: { width: 2, color: "accent" } }, children: [
         block(`${id}-caption`, panel("caption", item), { size: { px: 26 } }),
         block(`${id}-terminal`, { terminal: item.address }),
       ] };
@@ -192,7 +195,8 @@ async function toggle(overlay, cx) {
     const existing = raw === null ? null : JSON.parse(raw);
     if (raw !== null && !owned(existing)) throw new Error(`Leaving the existing ${path} untouched.`);
     const items = sessions();
-    if (!existing || !sameSessions(existing.children[0].content.props.items, items)) {
+    const savedProps = existing?.children?.[0]?.content?.props;
+    if (!existing || savedProps.version !== GRID_LAYOUT_VERSION || !sameSessions(savedProps.items, items)) {
       await writeTextFile(path, JSON.stringify(gridLayout(items), null, 2) + "\n", raw);
     }
     // The app discovers new layout files asynchronously on first use.
@@ -209,7 +213,7 @@ async function toggle(overlay, cx) {
 }
 
 // Presentation only: keep the source names, addresses, ownership and ordering intact.
-export function sessionCaptions(items, allSpaces, allPanes, allAgents, allTerminals) {
+export function sessionCaptions(items, allSpaces, allPanes, allAgents, allTerminals, focusedAddress = null) {
   const index = (entries, key) => {
     const result = new Map();
     for (const entry of entries) if (entry[key] && !result.has(entry[key])) result.set(entry[key], entry);
@@ -235,11 +239,13 @@ export function sessionCaptions(items, allSpaces, allPanes, allAgents, allTermin
       .filter(Boolean).join(" · ");
     const title = a?.title || p?.title || term?.title || term?.name || program;
     const context = [program, [spaceName, name].filter(Boolean).join(" / "), address].join(" · ");
-    const tooltip = `${context}\n${title} — ${pane ? "Go to original pane" : "Peek at agent"}`;
+    const destination = pane ? "Go to original pane" : "Peek at agent";
+    const focused = address === focusedAddress;
+    const tooltip = `${context}\n${title} — ${destination}${focused ? "\nCurrently focused" : ""}`;
     // Status and activity titles never influence identity or disambiguation.
     const key = JSON.stringify([name, spaceName, program, helper]);
     counts.set(key, (counts.get(key) || 0) + 1);
-    return { address, tab, name, detail, status, pane, tooltip, key };
+    return { address, tab, name, detail, status, pane, tooltip, key, focused };
   });
   return captions.map(({ key, ...caption }) => ({
     ...caption, id: counts.get(key) > 1 ? caption.address : null,
@@ -247,13 +253,14 @@ export function sessionCaptions(items, allSpaces, allPanes, allAgents, allTermin
 }
 
 export function captionRow(c, t) {
-  return h_flex().id(`caption-${c.address}`).size_full().px(7).gap(6).items_center().bg(t.chrome)
+  return h_flex().id(`caption-${c.address}`).size_full().px(7).gap(6).items_center().bg(c.focused ? t.selected : t.chrome)
     .text_size(12).cursor_pointer().hover(el => el.bg(t.hover)).tooltip(c.tooltip)
     .on_click((_e, cx) => {
       back(cx);
       if (c.pane) run("pane.focus", { pane: c.pane });
       else { run("tab.select", { id: c.tab }); run("terminal.peek", { terminal: c.address }); }
     })
+    .when(Boolean(c.focused), el => el.child(div().id(`focused-${c.address}`).flex_none().size(7).rounded(7).bg(t.accent).tooltip("Currently focused")))
     .child(h_flex().flex_1().min_w(0).gap(6).items_center().overflow_hidden()
       .child(div().flex_none().max_w(c.detail ? "65%" : "100%").truncate().font_semibold().text_color(t.foreground).child(c.name))
       .when(Boolean(c.detail), el => el.child(div().flex_1().min_w(0).truncate().text_color(t.muted).child(c.detail))))
@@ -266,8 +273,9 @@ function caption(item, t) {
   const tree = layout(), saved = owned(tree) ? tree.children[0].content.props.items : null;
   const items = Array.isArray(saved) ? saved : [item];
   const snapshot = [spaces(), panes(), agents(), terminals()];
-  const c = sessionCaptions(items, ...snapshot).find(c => c.address === item.address)
-    || sessionCaptions([item], ...snapshot)[0];
+  const focusedAddress = focused()?.terminal || null;
+  const c = sessionCaptions(items, ...snapshot, focusedAddress).find(c => c.address === item.address)
+    || sessionCaptions([item], ...snapshot, focusedAddress)[0];
   return captionRow(c, t);
 }
 
@@ -311,7 +319,8 @@ export default class Panopticon extends View {
       const items = sessions();
       // Only membership/location changes rebuild the grid. Output paints natively, and status
       // changes update captions without moving tiles or repeatedly resizing running terminals.
-      if (!checking() && shared("layout") === NAME && owned(layout()) && !sameSessions(p.items, items)) {
+      if (!checking() && shared("layout") === NAME && owned(layout()) &&
+        (p.version !== GRID_LAYOUT_VERSION || !sameSessions(p.items, items))) {
         const key = JSON.stringify(items);
         if (key !== this.pending) { this.pending = key; run("layout.set", { layout: gridLayout(items) }); }
       } else this.pending = null;

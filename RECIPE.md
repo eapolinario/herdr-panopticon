@@ -14,7 +14,7 @@ installer.
 
 Tell the person first what it does:
 
-- downloads the two standalone mod files from the GitHub **v0.3.0** tag,
+- downloads the two standalone mod files from the GitHub **v0.4.0** tag,
   checks them with `herdr-app check` in a temporary app home, and installs
   them plus a `.herdr-panopticon` ownership marker into
   `~/.config/herdr-app/mods/panopticon/`;
@@ -63,6 +63,7 @@ A 34 px toolbar shows a **24 px Bentham-inspired mark** beside **Panopticon**, *
 ## How it behaves
 
 - Open or leave the view with `mod.open:panopticon`; the suggested binding is Ctrl+Shift+G. Back restores the previous layout (or `main` if it no longer exists).
+- The focused terminal gets the theme accent on its tile border, a highlighted caption and an accent dot; caption tooltips say `Currently focused`.
 - Use `Alt+Left/Right/Up/Down` or `Alt+H/J/K/L` to focus neighboring tiles. While the grid is open, existing bindings for those chords are redirected to grid navigation and restored on leave.
 - A working agent shows **Working**, a blocked or error report shows **Needs you**, done shows **Done**, and idle shows **Idle**. The words use the matching theme colors. A recognized agent without a status shows **Open**. Status changes don't move tiles.
 - The terminal body takes real input, including Escape. Caption names are only a presentation of existing Herdr tab names, not a separate naming registry; status and activity-title changes never rename or reorder tiles. Hover over the caption for full location, title/address and destination. Click the caption to return to the original pane; a live helper without one opens in Peek over its owning tab.
