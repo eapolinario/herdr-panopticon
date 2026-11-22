@@ -1,8 +1,8 @@
 import { View, div, PathBuilder } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import {
-  agents, appHome, checking, closeOverlay, layout, layouts, notify, panes, props, readTextFile,
-  run, setShared, shared, spaces, terminals, theme, writeTextFile,
+  agents, appHome, checking, closeOverlay, focused, keys, layout, layouts, nextCommand, notify, panes,
+  props, readTextFile, run, setShared, shared, spaces, terminals, theme, writeTextFile,
 } from "herdr";
 
 // One entry file: Herdr confines relative imports to the mod directory, including through Stow links.
@@ -122,17 +122,68 @@ export function gridLayout(items) {
   return { id: ROOT, type: "column", resizable: false, padding: 4, gap: 4, font_size: 12, children };
 }
 
+export function gridNavigationAddress(items, direction, currentAddress = null) {
+  if (!Array.isArray(items) || !items.length) return null;
+  const index = items.findIndex(item => item.address === currentAddress);
+  if (index < 0) {
+    if (direction === "left" || direction === "up") return items[items.length - 1].address;
+    if (direction === "right" || direction === "down") return items[0].address;
+    return null;
+  }
+  const columns = Math.ceil(Math.sqrt(items.length));
+  const row = Math.floor(index / columns), column = index - row * columns;
+  if (direction === "left") return column > 0 ? items[index - 1].address : null;
+  if (direction === "right") return column + 1 < columns && index + 1 < items.length ? items[index + 1].address : null;
+  if (direction === "up") return row > 0 ? items[index - columns].address : null;
+  if (direction === "down") {
+    const target = row * columns + column + columns;
+    return target < items.length ? items[target].address : null;
+  }
+  return null;
+}
+
+export function gridNavigationCommand(command) {
+  const direction = ["navigate:", "panopticon."].reduce((value, prefix) =>
+    value?.startsWith(prefix) ? value.slice(prefix.length) : value, command);
+  return ["left", "right", "up", "down"].includes(direction) ? direction : null;
+}
+
+const GRID_NAVIGATION_KEYS = new Map([
+  ["alt-left", "left"], ["alt-right", "right"], ["alt-up", "up"], ["alt-down", "down"],
+  ["alt-h", "left"], ["alt-l", "right"], ["alt-k", "up"], ["alt-j", "down"],
+]);
+let gridNavigationOriginals = null;
+function installGridNavigation(cx) {
+  if (gridNavigationOriginals) {
+    cx.bind_keys([...gridNavigationOriginals].map(({ keystroke, direction }) =>
+      ({ keystroke, action: `panopticon.${direction}` })));
+    return;
+  }
+  gridNavigationOriginals = keys().filter(k => k.section === "global" && GRID_NAVIGATION_KEYS.has(k.keys))
+    .map(k => ({ keystroke: k.keys, action: k.action, direction: GRID_NAVIGATION_KEYS.get(k.keys) }));
+  cx.bind_keys(gridNavigationOriginals.map(({ keystroke, direction }) =>
+    ({ keystroke, action: `panopticon.${direction}` })));
+}
+function restoreGridNavigation(cx) {
+  if (!gridNavigationOriginals) return;
+  cx.bind_keys(gridNavigationOriginals.map(({ keystroke, action }) => ({ keystroke, action })));
+  gridNavigationOriginals = null;
+}
+
 const owned = tree => tree?.id === ROOT && tree.children?.[0]?.content?.mod === NAME &&
   tree.children[0].content.props?.role === "bar";
 function previousLayout() {
   const name = shared(RETURN_TO);
   return name !== NAME && layouts().includes(name) ? name : "main";
 }
-const back = () => run("layout.switch", { name: previousLayout() });
+const back = cx => {
+  if (cx) restoreGridNavigation(cx);
+  run("layout.switch", { name: previousLayout() });
+};
 
 async function toggle(overlay, cx) {
   const from = shared("layout") || "main";
-  if (from === NAME && owned(layout())) { closeOverlay(overlay); back(); return; }
+  if (from === NAME && owned(layout())) { closeOverlay(overlay); back(cx); return; }
   try {
     // Machine/session IDs are ephemeral. Create only our private runtime layout, never a Stow
     // link or a clone of the user's layout. Compare-and-swap protects concurrent file edits.
@@ -198,8 +249,8 @@ export function sessionCaptions(items, allSpaces, allPanes, allAgents, allTermin
 export function captionRow(c, t) {
   return h_flex().id(`caption-${c.address}`).size_full().px(7).gap(6).items_center().bg(t.chrome)
     .text_size(12).cursor_pointer().hover(el => el.bg(t.hover)).tooltip(c.tooltip)
-    .on_click(() => {
-      back();
+    .on_click((_e, cx) => {
+      back(cx);
       if (c.pane) run("pane.focus", { pane: c.pane });
       else { run("tab.select", { id: c.tab }); run("terminal.peek", { terminal: c.address }); }
     })
@@ -221,9 +272,35 @@ function caption(item, t) {
 }
 
 export default class Panopticon extends View {
+  async close(cx) {
+    restoreGridNavigation(cx);
+  }
+
   init(_props, cx) {
     const { overlay, role } = props() ?? {};
+    this.handle = cx.focus_handle();
     if (overlay && !role && !checking()) cx.spawn(cx => toggle(overlay, cx));
+    if (role === "bar" && !checking()) {
+      installGridNavigation(cx);
+      cx.spawn(async cx => {
+        for (;;) {
+          const command = await nextCommand();
+          if (command === "focus") { this.handle.focus(); cx.notify(); continue; }
+          const direction = gridNavigationCommand(command);
+          if (!direction) continue;
+          this.navigate(direction);
+        }
+      });
+    }
+  }
+
+  navigate(direction) {
+    if (shared("layout") !== NAME || !owned(layout())) {
+      run("pane.go", { direction });
+      return;
+    }
+    const next = gridNavigationAddress(sessions(), direction, focused()?.terminal);
+    if (next) run("pane.focus", { terminal: next });
   }
 
   render() {
@@ -238,13 +315,20 @@ export default class Panopticon extends View {
         const key = JSON.stringify(items);
         if (key !== this.pending) { this.pending = key; run("layout.set", { layout: gridLayout(items) }); }
       } else this.pending = null;
-      return h_flex().size_full().px(8).gap(12).items_center().bg(t.chrome).text_size(13)
+      return h_flex().id("panopticon-bar").track_focus(this.handle).size_full().px(8).gap(12).items_center().bg(t.chrome).text_size(13)
+        .on_key_down((e, cx) => {
+          if (!e.modifiers.alt) return;
+          const direction = { left: "left", h: "left", right: "right", l: "right", up: "up", k: "up", down: "down", j: "down" }[e.key];
+          if (!direction) return;
+          this.navigate(direction);
+          cx.stop_propagation();
+        })
         .child(h_flex().flex_none().gap(6).items_center()
           .child(brandMark(24, t))
           .child(div().font_semibold().text_color(t.foreground).child("Panopticon")))
         .child(div().flex_1().text_color(t.muted).child(`All spaces · ${items.length} agent${items.length === 1 ? "" : "s"}`))
         .child(div().id("back").px(9).py(3).rounded(5).bg(t.surface).text_color(t.foreground)
-          .cursor_pointer().hover(el => el.bg(t.hover)).on_click(back).child(`Back to ${previousLayout()}  ·  Ctrl+Shift+G`));
+          .cursor_pointer().hover(el => el.bg(t.hover)).on_click((_e, cx) => back(cx)).child(`Back to ${previousLayout()}  ·  Ctrl+Shift+G`));
     }
     return v_flex().size_full().items_center().justify_center().gap(12).text_color(t.muted)
       .when(p.role === "empty", el => el.child(brandMark(48, t)))

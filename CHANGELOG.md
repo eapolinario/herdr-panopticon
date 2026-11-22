@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 — 2026-11-22
+
+### Added
+- Grid navigation with `Alt+Left/Right/Up/Down` and `Alt+H/J/K/L`.
+- Existing Alt-arrow/HJKL bindings are temporarily redirected while the grid is open and restored on leave.
+
+### Changed
+- The grid toolbar is now focusable and owns the temporary navigation bindings.
+- The installer defaults to `v0.3.0`.
+
 ## 0.2.0 — 2026-11-21
 
 ### Added

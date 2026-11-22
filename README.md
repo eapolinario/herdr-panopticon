@@ -15,7 +15,7 @@ https://github.com/user-attachments/assets/f749a976-a4f1-40b1-ab5c-716ec52f17d8
 
 Tested on Linux with Herdr Desktop **0.1.16** and herdr-core **0.1.21**. The shell installer also targets macOS, but that is not yet tested. Have `herdr-app` and `curl` on your `PATH`; no Git checkout, build, package installation, sudo, or API key is needed. Herdr does not need to be running during installation.
 
-[The installer](install.sh) downloads the released **v0.2.0** mod from GitHub, runs `herdr-app check` in a temporary app home, and installs its two files plus an ownership marker into your app home's `mods/panopticon/`. **It does not edit your keys or existing layouts.**
+[The installer](install.sh) downloads the released **v0.3.0** mod from GitHub, runs `herdr-app check` in a temporary app home, and installs its two files plus an ownership marker into your app home's `mods/panopticon/`. **It does not edit your keys or existing layouts.**
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/eapolinario/herdr-panopticon/main/install.sh | sh
@@ -50,6 +50,7 @@ This is a snippet, **not a replacement keymap**. Pick another key if needed, or 
 The toolbar and empty state show the Bentham-inspired mark in your Herdr theme's foreground and accent colors.
 
 - **Click inside a terminal** to work in it. This is the real terminal, not a screenshot. Its rows and columns resize to fit the tile.
+- **Use `Alt+Left/Right/Up/Down` or `Alt+H/J/K/L`** to move between neighboring tiles in the grid. While the grid is open, Herdr temporarily redirects existing bindings for these chords to tile navigation and restores them when you leave.
 - **Click a caption** to return to the agent's original pane, or to peek at a helper that doesn't have a pane. Captions lead with the existing tab name in bold, followed by the workspace and tool in muted text; unnamed tabs appear as **Tab 1**, **Tab 2**, etc. Helpers are marked as such. Hover for the full title, terminal address and destination; a small address badge appears only when otherwise-identical labels need disambiguation. Status stays on the right.
 - **Toggle again or click Back** to return to your previous layout. The original spaces, tabs and splits stay intact.
 - Quiet and settled tabs count too. Live agent helpers are included under their owning tab; ordinary shells, finished terminals, and unrelated core workers are excluded. Opening and closing agent sessions updates the grid. A status change doesn't reshuffle it.
