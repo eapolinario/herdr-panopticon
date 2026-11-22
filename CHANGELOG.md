@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- The grid now marks the currently focused terminal with a highlighted caption, accent dot and native tile focus border.
+
 ## 0.3.0 — 2026-11-22
 
 ### Added

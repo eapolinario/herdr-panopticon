@@ -50,6 +50,7 @@ This is a snippet, **not a replacement keymap**. Pick another key if needed, or 
 The toolbar and empty state show the Bentham-inspired mark in your Herdr theme's foreground and accent colors.
 
 - **Click inside a terminal** to work in it. This is the real terminal, not a screenshot. Its rows and columns resize to fit the tile.
+- **The currently focused tile is marked** with the theme accent, a highlighted caption and an accent dot; hover or read the tooltip for `Currently focused`.
 - **Use `Alt+Left/Right/Up/Down` or `Alt+H/J/K/L`** to move between neighboring tiles in the grid. While the grid is open, Herdr temporarily redirects existing bindings for these chords to tile navigation and restores them when you leave.
 - **Click a caption** to return to the agent's original pane, or to peek at a helper that doesn't have a pane. Captions lead with the existing tab name in bold, followed by the workspace and tool in muted text; unnamed tabs appear as **Tab 1**, **Tab 2**, etc. Helpers are marked as such. Hover for the full title, terminal address and destination; a small address badge appears only when otherwise-identical labels need disambiguation. Status stays on the right.
 - **Toggle again or click Back** to return to your previous layout. The original spaces, tabs and splits stay intact.
